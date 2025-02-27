@@ -19,11 +19,11 @@ mettle-microservices/
 │
 │── services/                     # Core business logic for each microservice
 │   ├── invoicing/
-│   │   ├── api/                   # gRPC / REST Handlers
+│   │   ├── api/                   # REST Handlers
 │   │   ├── service/               # Business logic
 │   │   ├── repository/            # Data persistence layer
 │   │   ├── models/                # Data models
-│   │   ├── proto/                 # gRPC contracts (if used)
+│   │   ├── server/                # server
 │   │   ├── config/                # Config files
 │   │   ├── main.go                # Service entry point
 │   │   └── Dockerfile
@@ -31,7 +31,7 @@ mettle-microservices/
 │   ├── lending/                   # BNPL service
 │   ├── user-management/
 │
-│── pkg/                          # Shared packages
+│── pkg/                           #Shared packages
 │   ├── logger/                    # Logging utility
 │   ├── middleware/                # Common HTTP middleware
 │   ├── database/                  # PostgreSQL connection helpers
@@ -52,7 +52,7 @@ mettle-microservices/
 │── Makefile                        # Build automation
 │── docker-compose.yaml             # Local testing
 │── README.md                       # Documentation
-│── .github/                         # GitHub Actions for CI/CD
+│── .github/                        # GitHub Actions for CI/CD
 ```
 
 ## Services & Endpoints
@@ -91,7 +91,7 @@ mettle-microservices/
 - **Golang (Gin Gonic)** - Backend framework
 - **PostgreSQL** - Database
 - **Docker & Kubernetes** - Containerization and orchestration
-- **gRPC & REST** - Communication between services
+- **REST** - Communication between services
 - **JWT Authentication** - Secure authentication
 
 ## Getting Started
