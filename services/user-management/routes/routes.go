@@ -1,13 +1,24 @@
 package routes
 
-import "github.com/gin-gonic/gin"
+import (
+	"github.com/durotimicodes/natwest-clone/user-service/api"
+	"github.com/durotimicodes/natwest-clone/user-service/repository"
+	"github.com/durotimicodes/natwest-clone/user-service/service"
+	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
+)
 
-func SetUpUserRoutes(routes *gin.Engine) {
+func SetUpUserRoutes(db *gorm.DB) *gin.Engine {
 
-	//Import the service and the handler here
+	router := gin.Default()
+
+	//Initialize dependencies
+	userRepo := repository.NewUserRepository(db)
+	userService := service.NewUserService(*userRepo)
+	userHandler := api.NewUserHandler(userService)
 
 	//Group the routes
-	userGroup := routes.Group("/api/v1/users")
+	userGroup := router.Group("/api/v1/users")
 
 	//User Authentication & Management
 	{
@@ -27,17 +38,19 @@ func SetUpUserRoutes(routes *gin.Engine) {
 
 	//Account Management
 	{
-		userGroup.GET("/:id")          //get user by id (admin only)
-		userGroup.GET("")              //get all users (admin only)
-		userGroup.DELETE("delete/:id") // delete a users (admin only)
+		userGroup.GET("/:id", userHandler.GetUserByIDHandler) //get user by id (admin only)
+		userGroup.GET("")                                     //get all users (admin only)
+		userGroup.DELETE("delete/:id")                        // delete a users (admin only)
 	}
 
 	//Security and Verification
 	{
-		userGroup.POST("/verify-email")           //verify email with OTP
+		userGroup.POST("/verify-email")            //verify email with OTP
 		userGroup.POST("/send-verification-email") //resend verification email
-		userGroup.POST("/forgot-password")        //send password reset link
-		userGroup.POST("/reset-password")         //reset password with token
+		userGroup.POST("/forgot-password")         //send password reset link
+		userGroup.POST("/reset-password")          //reset password with token
 	}
+
+	return router
 
 }
