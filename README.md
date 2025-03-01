@@ -25,6 +25,7 @@ mettle-microservices/
 │   │   ├── models/                # Data models
 │   │   ├── server/                # server
 │   │   ├── config/                # Config files
+│   │   ├── service-test/          # Test file
 │   │   ├── main.go                # Service entry point
 │   │   └── Dockerfile
 │   ├── payments/
