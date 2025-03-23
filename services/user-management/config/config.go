@@ -1,35 +1,72 @@
 package config
 
 import (
-	"fmt"
 	"log"
 	"os"
 
-	"github.com/durotimicodes/natwest-clone/user-service/models"
-	"gorm.io/driver/postgres"
-	"gorm.io/gorm"
+	"github.com/joho/godotenv"
 )
 
-// InitDB initializes the PostGresSQL database connection
-func InitDB() *gorm.DB {
-	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable",
-		os.Getenv("DB_HOST"),
-		os.Getenv("DB_USER"),
-		os.Getenv("DB_PASSWORD"),
-		os.Getenv("DB_NAME"),
-		os.Getenv("DB_PORT"))
+type Config struct {
+	APIBaseURL string
+	APIKey     string
+	DBHost     string
+	DBPort     string
+	DBUser     string
+	DBPassword string
+	DBName     string
+	LogLevel   string
+	ServerPort string
+}
 
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+func LoadConfig() *Config {
+	err := godotenv.Load()
 	if err != nil {
-		log.Fatalf("Failed to connect to DB: %v", err)
+		log.Println("warning: No .env file found, relying on system environment variables")
 	}
 
-	//Auto-migrate the user model
-	if err := db.AutoMigrate(&models.User{}); err != nil {
-		log.Fatal("Failed to auto-migrate User model", err)
+	return &Config{
+		APIBaseURL: getEnv("API_BASE_URL", ""),
+		APIKey:     getEnv("API_KEY", ""),
+		DBHost:     getEnv("DB_HOST", ""),
+		DBPort:     getEnv("DB_PORT", ""),
+		DBUser:     getEnv("DB_USER", ""),
+		DBPassword: getEnv("DB_PASSWORD", ""),
+		DBName:     getEnv("DB_NAME", ""),
+		LogLevel:   getEnv("LOG_LEVEL", ""),
+		ServerPort: getEnv("SERVER_PORT", ""),
+	}
+}
+
+func getEnv(key, defaultValue string) string {
+	if value, exists := os.LookupEnv(key); exists {
+		return value
 	}
 
-	log.Println("Connecting to PostgreSQL DB successfully")
+	return defaultValue
+}
 
-	return db
+// loadEnv loads environment variables from a .env file
+func loadEnv() error {
+	if _, err := os.Stat(".env"); err == nil {
+		if err := os.Setenv("DB_HOST", "localhost"); err != nil {
+			return err
+		}
+		if err := os.Setenv("DB_USER", "your_db_user"); err != nil {
+			return err
+		}
+		if err := os.Setenv("DB_PASSWORD", "your_db_password"); err != nil {
+			return err
+		}
+		if err := os.Setenv("DB_NAME", "your_db_name"); err != nil {
+			return err
+		}
+		if err := os.Setenv("DB_PORT", "5432"); err != nil {
+			return err
+		}
+		if err := os.Setenv("PORT", "8088"); err != nil {
+			return err
+		}
+	}
+	return nil
 }

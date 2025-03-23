@@ -12,31 +12,30 @@ import (
 )
 
 func SetUpUserServer(routes *gin.Engine) {
-
 	port := os.Getenv("PORT")
 	if port == "" {
-		port = "8084"
+		port = "8088"
 	}
 
-	//Create HTTP server
+	// Create HTTP server
 	srv := &http.Server{
 		Addr:              ":" + port,
 		Handler:           routes,
-		ReadTimeout:       time.Duration(time.Second * 60),
-		ReadHeaderTimeout: time.Duration(time.Second * 60),
-		WriteTimeout:      time.Duration(time.Second * 60),
+		ReadTimeout:       60 * time.Second,
+		ReadHeaderTimeout: 60 * time.Second,
+		WriteTimeout:      60 * time.Second,
 	}
 
-	//Run server in a goroutine
+	// Run server in a goroutine
 	go func() {
 		log.Printf("Server running on port %s", port)
-		if err := srv.ListenAndServe(); err != http.ErrServerClosed {
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("server error %v:", err)
 		}
 	}()
 
-	//Graceful shutdown
-	quit := make(chan os.Signal, 1) //Buffered channel
+	// Graceful shutdown
+	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt)
 	<-quit
 	log.Printf("Shutting down server on port %s", port)
