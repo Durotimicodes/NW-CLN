@@ -1,12 +1,16 @@
 package api
 
 import (
+	"context"
+	"log"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/durotimicodes/natwest-clone/user-service/models"
 	"github.com/durotimicodes/natwest-clone/user-service/service"
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v4"
 )
 
 type UserHandler struct {
@@ -34,49 +38,59 @@ func (h *UserHandler) HeartBeat(ctx *gin.Context) {
 func (h *UserHandler) RegisterUser(ctx *gin.Context) {
 	var user models.User
 
-	//Bind JSON request body to user struct
+	// Bind JSON request body to user struct with proper error handling
 	if err := ctx.ShouldBindJSON(&user); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"err": "Invalid request data"})
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request data"})
 		return
 	}
 
-	//Use channels to process request safely
-	resultChan := make(chan error)
+	// Use context with timeout for better request handling
+	ctxWithTimeout, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel() //defer cancel to prevent memory leaks
+
+	// Use goroutine with error channel for concurrent execution
+	errChan := make(chan error, 1)
 
 	go func() {
+		defer close(errChan)
+
+		// Load existing users
 		newUsers, err := h.UserService.LoadUser()
 		if err != nil {
-			ctx.JSON(http.StatusInternalServerError, gin.H{
-				"error": "failed to load user",
-			})
-			resultChan <- err
+			log.Println("Failed to load users:", err)
+			errChan <- err
 			return
 		}
+
+		// Assign unique ID and append the new user
 		user.ID = uint(len(newUsers) + 1)
 		newUsers = append(newUsers, user)
 
+		// Save users with proper error handling
 		if err := h.UserService.SaveUser(newUsers); err != nil {
-			resultChan <- err
+			log.Println("Failed to save users:", err)
+			errChan <- err
 			return
 		}
+
+		errChan <- nil
 	}()
 
-	//Register user via service
-	// if err := h.UserService.RegisterUser(&user); err != nil {
-	// 	ctx.JSON(http.StatusConflict, gin.H{"error": err.Error()})
-	// 	return
-	// }
-
-	if err := <-resultChan; err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"error": "failed to save user",
+	// Listen for error or timeout
+	select {
+	case err := <-errChan:
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save user"})
+			return
+		}
+		ctx.JSON(http.StatusCreated, gin.H{
+			"message": "User registered successfully",
+			"data":    user,
 		})
+	case <-ctxWithTimeout.Done():
+		ctx.JSON(http.StatusGatewayTimeout, gin.H{"error": "Request timed out"})
 	}
 
-	ctx.JSON(http.StatusCreated, gin.H{
-		"message": "User registered successfully",
-		"data":    user,
-	})
 }
 
 // GetUserByID fetches a user by ID
@@ -103,9 +117,54 @@ func (h *UserHandler) GetUserByIDHandler(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, user)
 }
 
+// Secret key for JWT generation (in production, store this securely)
+var jwtSecret = []byte("your_secret_key")
+
 // Authentication
 func (h *UserHandler) LoginUser(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{"message": "LoginUser endpoint reached"})
+	var req models.LoginRequest
+
+	//Bind JSON request to struct
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request data"})
+		return
+	}
+
+	//Mock authentication (replace with real DB lookup)
+	user, err := h.UserService.AuthenticateUser(req.Email, req.Password)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
+		return
+	}
+
+	//Generate JWT token
+	expirationTime := time.Now().Add(24 * time.Hour) //1-day token expiration
+	claims := &models.Claims{
+		Email: user.Email,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(expirationTime),
+		},
+	}
+
+	// Generate token
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	tokenString, err := token.SignedString(jwtSecret)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
+		return
+	}
+
+	// Respond with token
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Login successful",
+		"token":   tokenString,
+		"user": gin.H{
+			"id":    user.ID,
+			"email": user.Email,
+			"name":  user.FullName,
+		},
+	})
+
 }
 
 func (h *UserHandler) LogoutUser(c *gin.Context) {
@@ -134,7 +193,6 @@ func (h *UserHandler) UpdateEmail(c *gin.Context) {
 }
 
 // Account Management (Admin only)
-
 func (h *UserHandler) GetAllUsers(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "GetAllUsers endpoint reached"})
 }

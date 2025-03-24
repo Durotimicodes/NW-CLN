@@ -24,7 +24,6 @@ func NewUserService(userRepo repository.UserRepository) *UserService {
 	}
 }
 
-
 // RegisterUser handles user registration with validation & password hashing
 func (s *UserService) RegisterUser(user *models.User) error {
 	// Check if user with email already exists
@@ -118,4 +117,21 @@ func (s *UserService) SaveUser(users []models.User) error {
 	}
 
 	return os.WriteFile(filePath, data, 0644)
+}
+
+func (s *UserService) AuthenticateUser(email, password string) (*models.User, error) {
+	//Mock user data (replace with DB query)
+	mockUser := models.User{
+		ID:       1,
+		Email:    "test@example.com",
+		Password: "password123", // In production, use hashed passwords!
+		FullName: "Oluwadurotimi Fagbuyi",
+	}
+
+	// Check credentials
+	if email == mockUser.Email && password == mockUser.Password {
+		return &mockUser, nil
+	}
+
+	return nil, errors.New("invalid credentials")
 }

@@ -3,13 +3,16 @@ package models
 import (
 	"time"
 
+	"github.com/golang-jwt/jwt/v4"
 	"gorm.io/gorm"
 )
 
 type User struct {
 	gorm.Model
+	ID            uint          `json:"id"`
 	FirstName     string        `json:"first_name"`
 	LastName      string        `json:"last_name"`
+	FullName      string        `json:"full_name"`
 	Email         string        `json:"email" gorm:"unique"`
 	Password      string        `json:"password"`
 	PhoneNumber   string        `json:"phone_number"`
@@ -35,7 +38,6 @@ const (
 	ATMStatusDeactivated ATMStatus = "deactivated"
 )
 
-
 type AccountStatus string
 
 const (
@@ -43,3 +45,14 @@ const (
 	AccountStatusSuspended AccountStatus = "suspended"
 	AccountStatusBlocked   AccountStatus = "blocked"
 )
+
+type LoginRequest struct {
+	Email    string `json:"email" binding:"required,email"`
+	Password string `json:"password" binding:"required"`
+}
+
+// JWT claims structure
+type Claims struct {
+	Email string `json:"email"`
+	jwt.RegisteredClaims
+}
